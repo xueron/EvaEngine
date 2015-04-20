@@ -250,7 +250,7 @@ class Engine
 
         $debugger = new Debug();
         $debugger->setShowFileFragment(true);
-        $debugger->listen(true, true);
+        $debugger->listen(true, false); // onUncaughtLowSeverity not implemented
         return $this->debugger = $debugger;
     }
 
