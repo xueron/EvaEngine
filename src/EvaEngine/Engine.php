@@ -9,6 +9,7 @@
 
 namespace Eva\EvaEngine;
 
+use Phalcon\Crypt;
 use Phalcon\Debug;
 use Phalcon\Config;
 use Phalcon\Loader;
@@ -745,6 +746,20 @@ class Engine
         );
 
         $di->set('placeholder', 'Eva\EvaEngine\View\Helper\Placeholder');
+
+        // 覆盖默认的crypt服务，增加设置全局加密密钥
+        $di->set(
+            'crypt',
+            function () use ($di) {
+                $config = $di->getConfig();
+                $crypt = new Crypt();
+
+                //设置全局加密密钥
+                $crypt->setKey($config->crypt_key);
+                return $crypt;
+            },
+            true
+        );
 
         $di->set(
             'cookies',
