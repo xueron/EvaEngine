@@ -124,6 +124,7 @@ class Engine
     public function setEnvironment($environment)
     {
         $this->environment = $environment;
+
         return $this;
     }
 
@@ -134,6 +135,7 @@ class Engine
     public function setAppRoot($appRoot)
     {
         $this->appRoot = $appRoot;
+
         return $this;
     }
 
@@ -152,6 +154,7 @@ class Engine
     public function setAppName($name)
     {
         $this->appName = $name;
+
         return $this;
     }
 
@@ -170,6 +173,7 @@ class Engine
     public function setConfigPath($path)
     {
         $this->configPath = $path;
+
         return $this;
     }
 
@@ -181,6 +185,7 @@ class Engine
         if ($this->configPath) {
             return $this->configPath;
         }
+
         return $this->configPath = $this->appRoot . '/config';
     }
 
@@ -192,6 +197,7 @@ class Engine
     public function setModulesPath($modulesPath)
     {
         $this->modulesPath = $modulesPath;
+
         return $this;
     }
 
@@ -203,6 +209,7 @@ class Engine
         if ($this->modulesPath) {
             return $this->modulesPath;
         }
+
         return $this->modulesPath = $this->appRoot . '/modules';
     }
 
@@ -218,6 +225,7 @@ class Engine
         if (file_exists($cacheFile) && $cache = include($cacheFile)) {
             return true === $serialize ? unserialize($cache) : $cache;
         }
+
         return null;
     }
 
@@ -236,8 +244,10 @@ class Engine
                 fwrite($fh, '<?php return ' . var_export($content, true) . ';');
             }
             fclose($fh);
+
             return true;
         }
+
         return false;
     }
 
@@ -253,6 +263,7 @@ class Engine
         $debugger = new Debug();
         $debugger->setShowFileFragment(true);
         $debugger->listen(true, false); // onUncaughtLowSeverity not implemented
+
         return $this->debugger = $debugger;
     }
 
@@ -367,6 +378,7 @@ class Engine
         if (!$di->getConfig()->debug && false === $cacheLoaded && $listeners) {
             $this->writeCache($cacheFile, $listeners);
         }
+
         return $this;
     }
 
@@ -382,6 +394,7 @@ class Engine
         $helpers = $this->readCache($cacheFile);
         if ($helpers) {
             Tag::registerHelpers($helpers);
+
             return $this;
         }
 
@@ -399,6 +412,7 @@ class Engine
         if (!$di->getConfig()->debug && $helpers) {
             $this->writeCache($cacheFile, $helpers);
         }
+
         return $this;
     }
 
@@ -410,6 +424,7 @@ class Engine
     public function setDI(DiInterface $di)
     {
         $this->di = $di;
+
         return $this;
     }
 
@@ -451,9 +466,28 @@ class Engine
             'moduleManager',
             function () use ($di) {
                 $moduleManager = new ModuleManager();
-                // No need any more, DI get() will do it by default
-                //$moduleManager->setEventsManager($di->getEventsManager());
+                $moduleManager->setEventsManager($di->getEventsManager());
+
                 return $moduleManager;
+            },
+            true
+        );
+
+        //System global events manager
+        $di->set(
+            'eventsManager',
+            function () use ($di) {
+                $eventsManager = new EventsManager();
+                $eventsManager->enablePriorities(true);
+                // dispatch caching event handler
+                $eventsManager->attach(
+                    "dispatch",
+                    new DispatchInterceptor(),
+                    -1
+                );
+                $eventsManager->enablePriorities(true);
+
+                return $eventsManager;
             },
             true
         );
@@ -474,16 +508,16 @@ class Engine
             true
         );
 
-//  不再需要，默认的dispatcher会自动设置 eventsManager
-//        $di->set(
-//            'dispatcher',
-//            function () use ($di) {
-//                $dispatcher = new Dispatcher();
-//                $dispatcher->setEventsManager($di->getEventsManager());
-//                return $dispatcher;
-//            },
-//            true
-//        );
+        $di->set(
+            'dispatcher',
+            function () use ($di) {
+                $dispatcher = new Dispatcher();
+                $dispatcher->setEventsManager($di->getEventsManager());
+
+                return $dispatcher;
+            },
+            true
+        );
 
         $di->set(
             'modelsMetadata',
@@ -517,6 +551,8 @@ class Engine
                         ".phtml" => 'Phalcon\Mvc\View\Engine\Php'
                     )
                 );
+                $view->setEventsManager($di->getEventsManager());
+
                 return $view;
             },
             true
@@ -562,6 +598,7 @@ class Engine
             function () use ($di) {
                 $transactions = new \Phalcon\Mvc\Model\Transaction\Manager();
                 $transactions->setDbService('dbMaster');
+
                 return $transactions;
             },
             true
@@ -639,6 +676,7 @@ class Engine
                 foreach ($config->task->servers as $key => $server) {
                     $client->addServer($server->host, $server->port);
                 }
+
                 return $client;
             },
             true
@@ -652,6 +690,7 @@ class Engine
                 foreach ($config->task->servers as $key => $server) {
                     $worker->addServer($server->host, $server->port);
                 }
+
                 return $worker;
             },
             true
@@ -689,6 +728,7 @@ class Engine
                 $url->setVersionFile($config->staticBaseUriVersionFile);
                 $url->setBaseUri($config->baseUri);
                 $url->setStaticBaseUri($config->staticBaseUri);
+
                 return $url;
             },
             true
@@ -699,11 +739,22 @@ class Engine
             function () use ($di, $self) {
                 Tag::setDI($di);
                 $self->registerViewHelpers();
+
                 return new Tag();
             }
         );
 
         $di->set('placeholder', 'Eva\EvaEngine\View\Helper\Placeholder');
+
+        $di->set(
+            'cookies',
+            function () {
+                $cookies = new \Phalcon\Http\Response\Cookies();
+                $cookies->useEncryption(false);
+
+                return $cookies;
+            }
+        );
 
         $di->set(
             'translate',
@@ -731,6 +782,7 @@ class Engine
             'logException',
             function () use ($di) {
                 $config = $di->getConfig();
+
                 return new FileLogger($config->logger->path . 'error.log');
             }
         );
@@ -759,6 +811,8 @@ class Engine
             'router',
             function () use ($di, $argv) {
                 $router = new CLIRouter();
+                $router->setDI($di);
+
                 return $router;
             }
         );
@@ -805,6 +859,7 @@ class Engine
                     $dispatcher->setParams($argv);
                     $dispatcher->setNamespaceName("Eva\\EvaEngine\\Tasks");
                 }
+
                 return $dispatcher;
             }
         );
@@ -847,6 +902,7 @@ class Engine
         if (!$config->debug) {
             $this->writeCache($cacheFile, $config->toArray());
         }
+
         return $config;
     }
 
@@ -899,6 +955,7 @@ class Engine
             //Dump merged routers for debug
             $this->writeCache($this->getConfigPath() . "/_debug.$cachePrefix.router.php", $router, true);
         }
+
         return $router;
     }
 
@@ -926,6 +983,7 @@ class Engine
         if (!class_exists($adapterClass)) {
             throw new Exception\RuntimeException(sprintf('No metadata adapter found by %s', $adapterClass));
         }
+
         return new $adapterClass($config->modelsMetadata->options->toArray());
     }
 
@@ -935,7 +993,9 @@ class Engine
         if (!isset($config->dbAdapter->master->adapter) || !$config->dbAdapter->master) {
             throw new Exception\RuntimeException(sprintf('No DB Master options found'));
         }
-        return $this->diDbAdapter($config->dbAdapter->master->adapter, $config->dbAdapter->master->toArray());
+
+        return $this->diDbAdapter($config->dbAdapter->master->adapter, $config->dbAdapter->master->toArray(),
+            $this->getDI());
     }
 
     public function diDbSlave()
@@ -946,11 +1006,12 @@ class Engine
         if (!isset($slaves->$slaveKey) || count($slaves) < 1) {
             throw new Exception\RuntimeException(sprintf('No DB slave options found'));
         }
-        return $this->diDbAdapter($slaves->$slaveKey->adapter, $slaves->$slaveKey->toArray());
+
+        return $this->diDbAdapter($slaves->$slaveKey->adapter, $slaves->$slaveKey->toArray(), $this->getDI());
     }
 
 
-    protected function diDbAdapter($adapterKey, array $options)
+    public static function diDbAdapter($adapterKey, array $options, $di)
     {
         $adapterKey = false === strpos($adapterKey, '\\') ? strtolower($adapterKey) : $adapterKey;
         $adapterMapping = array(
@@ -970,10 +1031,9 @@ class Engine
         $dbAdapter = new $adapterClass($options);
 
 
-        $config = $this->getDI()->getConfig();
+        $config = $di->getConfig();
 
         if ($config->debug) {
-            $di = $this->getDI();
             $eventsManager = $di->getEventsManager();
             $logger = new FileLogger($config->logger->path . 'db_query.log');
 
@@ -996,6 +1056,7 @@ class Engine
             );
             $dbAdapter->setEventsManager($eventsManager);
         }
+
         return $dbAdapter;
     }
 
@@ -1032,6 +1093,7 @@ class Engine
             $config->cache->fastCache->port,
             $config->cache->fastCache->timeout
         );
+
         return $redis;
     }
 
@@ -1057,7 +1119,8 @@ class Engine
         );
 
         $frontCacheClassName = $config->cache->$configKey->frontend->adapter;
-        $frontCacheClassName = false === strpos($frontCacheClassName, '\\') ? strtolower($frontCacheClassName) : $frontCacheClassName;
+        $frontCacheClassName = false === strpos($frontCacheClassName,
+            '\\') ? strtolower($frontCacheClassName) : $frontCacheClassName;
         $frontCacheClass = empty($adapterMapping[$frontCacheClassName]) ? $frontCacheClassName : $adapterMapping[$frontCacheClassName];
         if (false === class_exists($frontCacheClass)) {
             throw new Exception\RuntimeException(sprintf('No cache adapter found by %s', $frontCacheClass));
@@ -1070,7 +1133,8 @@ class Engine
             $cache = new \Eva\EvaEngine\Cache\Backend\Disable($frontCache);
         } else {
             $backendCacheClassName = $config->cache->$configKey->backend->adapter;
-            $backendCacheClassName = false === strpos($backendCacheClassName, '\\') ? strtolower($backendCacheClassName) : $backendCacheClassName;
+            $backendCacheClassName = false === strpos($backendCacheClassName,
+                '\\') ? strtolower($backendCacheClassName) : $backendCacheClassName;
             $backendCacheClass =
                 !empty($adapterMapping[$backendCacheClassName])
                     ? $adapterMapping[$backendCacheClassName]
@@ -1086,6 +1150,7 @@ class Engine
                 $config->cache->$configKey->backend->options->toArray()
             ));
         }
+
         return $cache;
     }
 
@@ -1132,6 +1197,7 @@ class Engine
         } else {
             $mailer = \Swift_Mailer::newInstance($transport);
         }
+
         return $mailer;
     }
 
@@ -1154,7 +1220,19 @@ class Engine
         if (false === class_exists($sessionClass)) {
             throw new Exception\RuntimeException(sprintf('No session adapter found by %s', $sessionClass));
         }
-
+        if (!empty($config->session->session_name)) {
+            session_name($config->session->session_name);
+        }
+        if (!empty($config->session->cookie_params)) {
+            $cookie_params = $config->session->cookie_params;
+            session_set_cookie_params(
+                $cookie_params->lifetime,
+                $cookie_params->path,
+                $cookie_params->domain,
+                $cookie_params->secure,
+                $cookie_params->httponly
+            );
+        }
         $session = new $sessionClass(array_merge(
             array(
                 'uniqueId' => $this->getAppName(),
@@ -1165,12 +1243,14 @@ class Engine
             //NOTICE: Get php warning here, not found reason
             @$session->start();
         }
+
         return $session;
     }
 
     public function diTokenStorage()
     {
         $config = $this->getDI()->getConfig();
+
         return new TokenStorage(array_merge(
             array(
                 'uniqueId' => $this->getAppName(),
@@ -1195,6 +1275,7 @@ class Engine
             'content' => $file,
             'delimiter' => ',',
         ));
+
         return $translate;
     }
 
@@ -1205,6 +1286,7 @@ class Engine
 
         $adapter = new $adapterClass($config->filesystem->default->uploadPath);
         $filesystem = new \Gaufrette\Filesystem($adapter);
+
         return $filesystem;
     }
 
@@ -1255,6 +1337,7 @@ class Engine
         } else {
             $this->initErrorHandler(new Error\ErrorHandler);
         }
+
         return $this;
     }
 
@@ -1290,6 +1373,7 @@ class Engine
         set_error_handler("$errorClass::errorHandler");
         set_exception_handler("$errorClass::exceptionHandler");
         register_shutdown_function("$errorClass::shutdownHandler");
+
         return $this;
     }
 
