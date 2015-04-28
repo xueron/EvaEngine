@@ -10,9 +10,9 @@
 namespace Eva\EvaEngine;
 
 use Phalcon\Annotations\Collection as Property;
-use Phalcon\Mvc\Model as PhalconModel;
 use Phalcon\Annotations\Adapter\Memory as Annotations;
 use Phalcon\Forms\ElementInterface;
+use Eva\EvaEngine\Mvc\Model as PhalcomModel;
 
 /**
  * Class Form
@@ -82,6 +82,7 @@ class Form extends \Phalcon\Forms\Form
         'numeric' => 'Phalcon\Forms\Element\Numeric',
         'number' => 'Phalcon\Forms\Element\Numeric',
         'password' => 'Phalcon\Forms\Element\Password',
+        'radio' => 'Phalcon\Forms\Element\Radio',
         'select' => 'Phalcon\Forms\Element\Select',
         'submit' => 'Phalcon\Forms\Element\Submit',
         'text' => 'Phalcon\Forms\Element\Text',

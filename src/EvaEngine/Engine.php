@@ -9,32 +9,34 @@
 
 namespace Eva\EvaEngine;
 
+use Phalcon\Debug;
+use Phalcon\Config;
+use Phalcon\Loader;
+use Phalcon\DiInterface;
+use Phalcon\CLI\Console;
+use Phalcon\CLI\Router as CLIRouter;
+use Phalcon\CLI\Dispatcher as CLIDispatcher;
+use Phalcon\DI\FactoryDefault;
+use Phalcon\DI\FactoryDefault\CLI;
+use Phalcon\Mvc\Router;
+use Phalcon\Mvc\Dispatcher;
+use Phalcon\Mvc\Application;
+use Phalcon\Mvc\View\Engine\Volt;
+use Phalcon\Mvc\View\Engine\Php;
+use Phalcon\Events\Manager as EventsManager;
+use Phalcon\Logger\Adapter\File as FileLogger;
+use Phalcon\Queue\Beanstalk;
+use Eva\EvaEngine\Module\Manager as ModuleManager;
 use Eva\EvaEngine\CLI\Output\ConsoleOutput;
 //use Eva\EvaEngine\Events\DispatchCacheListener;
 use Eva\EvaEngine\Interceptor\Dispatch as DispatchInterceptor;
 use Eva\EvaEngine\SDK\SendCloudMailer;
-use Eva\EvaSms\Sender;
-use Phalcon\CLI\Console;
-use Phalcon\Mvc\Router;
 use Eva\EvaEngine\Mvc\Url as UrlResolver;
-use Phalcon\DI\FactoryDefault;
-use Phalcon\Config;
-use Phalcon\Loader;
-use Phalcon\Mvc\Application;
-use Phalcon\Debug;
-use Phalcon\Events\Manager as EventsManager;
-use Phalcon\Logger\Adapter\File as FileLogger;
-use Phalcon\Mvc\Dispatcher;
 use Eva\EvaEngine\Mvc\View;
-use Eva\EvaEngine\Module\Manager as ModuleManager;
 use Eva\EvaEngine\Mvc\Model\Manager as ModelManager;
-use Phalcon\CLI\Router as CLIRouter;
-use Phalcon\CLI\Dispatcher as CLIDispatcher;
-use Phalcon\DI\FactoryDefault\CLI;
 use Eva\EvaEngine\Service\TokenStorage;
-use Phalcon\DiInterface;
-use Phalcon\Mvc\View\Engine\Volt;
-use Phalcon\Mvc\View\Engine\Php;
+use Eva\EvaEngine\Tag;
+use Eva\EvaSms\Sender;
 
 /**
  * Core application configuration / bootstrap
@@ -314,7 +316,7 @@ class Engine
 
         $this->getApplication()->registerModules($moduleManager->getModules());
         //Overwirte default modulemanager
-        $this->getDI()->set('moduleManager', $moduleManager);
+        $this->getDI()->set('moduleManager', $moduleManager, true);
         return $this;
     }
 
@@ -608,16 +610,33 @@ class Engine
             true
         );
 
-        /**********************************
-         * DI initialize for queue
+        /***********************************
+         * DI initialize for queue and task
          ***********************************/
+        /**
+         * set quere server using Beanstalkd
+         */
         $di->set(
             'queue',
             function () use ($di) {
                 $config = $di->getConfig();
+                $server = new Beanstalk(array(
+                    'host' => $config->queue->server->host,
+                    'port' => $config->queue->server->port
+                ));
+                $server->connect();
+                return $server;
+            },
+            true
+        );
+
+        $di->set(
+            'taskServer',
+            function () use ($di) {
+                $config = $di->getConfig();
                 $client = new \GearmanClient();
                 $client->setTimeout(1000);
-                foreach ($config->queue->servers as $key => $server) {
+                foreach ($config->task->servers as $key => $server) {
                     $client->addServer($server->host, $server->port);
                 }
                 return $client;
@@ -630,7 +649,7 @@ class Engine
             function () use ($di) {
                 $config = $di->getConfig();
                 $worker = new \GearmanWorker();
-                foreach ($config->queue->servers as $key => $server) {
+                foreach ($config->task->servers as $key => $server) {
                     $worker->addServer($server->host, $server->port);
                 }
                 return $worker;
@@ -675,32 +694,16 @@ class Engine
             true
         );
 
-        // NO Need, its default
-//        $di->set('escaper', 'Phalcon\Escaper');
-
         $di->set(
             'tag',
             function () use ($di, $self) {
-                Tag::setDi($di);
+                Tag::setDI($di);
                 $self->registerViewHelpers();
                 return new Tag();
             }
         );
 
-        // NO NEED, use flashSession, which was injected by default
-//        $di->set('flash', 'Phalcon\Flash\Session');
-
         $di->set('placeholder', 'Eva\EvaEngine\View\Helper\Placeholder');
-
-        // NO NEED, Its FactoryDefault()'s default
-//        $di->set(
-//            'cookies',
-//            function () {
-//                $cookies = new \Phalcon\Http\Response\Cookies();
-//                $cookies->useEncryption(false);
-//                return $cookies;
-//            }
-//        );
 
         $di->set(
             'translate',
@@ -756,7 +759,6 @@ class Engine
             'router',
             function () use ($di, $argv) {
                 $router = new CLIRouter();
-                // $router->setDI($di);
                 return $router;
             }
         );

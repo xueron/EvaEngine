@@ -107,7 +107,9 @@ class Model extends PhalconModel
     {
         $data = null;
         if (!$dataStructure) {
-            return $data;
+            //return $data;
+            // xueron: If no dataStructure given, use Phalcon's default dump function
+            return parent::dump();
         }
         foreach ($dataStructure as $key => $subdata) {
             if (is_numeric($key)) {

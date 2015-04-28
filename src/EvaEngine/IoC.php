@@ -11,7 +11,7 @@
 namespace Eva\EvaEngine;
 
 use Eva\EvaEngine\Exception\RuntimeException;
-use Phalcon\DI;
+use Phalcon\Di;
 
 /**
  * Class IoC
@@ -20,12 +20,12 @@ use Phalcon\DI;
 class IoC
 {
     /**
-     * @var DI
+     * @var Di
      */
     private static $di;
 
     /**
-     * @return DI
+     * @return Di
      */
     public static function getDI()
     {
@@ -33,7 +33,7 @@ class IoC
     }
 
     /**
-     * @param DI $di
+     * @param Di $di
      */
     public static function setDI(DI $di)
     {
@@ -63,7 +63,7 @@ class IoC
      * @param mixed $definition
      * @param boolean $shared
      * @throws RuntimeException
-     * @return \Phalcon\DI\ServiceInterface
+     * @return \Phalcon\Di\ServiceInterface
      */
     public static function set($name, $definition, $shared = null)
     {
