@@ -45,9 +45,12 @@ class Manager extends ModelManager
      */
     public function getReadConnection(ModelInterface $model)
     {
-        if ($this->getDI()->getDbSlave()) {
+        if ($this->getDI()->offsetExists($model->getReadConnectionService())) {
+            $this->setReadConnectionService($model, $model->getReadConnectionService());
+        } elseif ($this->getDI()->getDbSlave()) {
             $this->setReadConnectionService($model, 'dbSlave');
         }
+
 
         return parent::getReadConnection($model);
     }
@@ -58,7 +61,9 @@ class Manager extends ModelManager
      */
     public function getWriteConnection(ModelInterface $model)
     {
-        if ($this->getDI()->getDbMaster()) {
+        if ($this->getDI()->offsetExists($model->getWriteConnectionService())) {
+            $this->setWriteConnectionService($model, $model->getWriteConnectionService());
+        } elseif ($this->getDI()->getDbMaster()) {
             $this->setWriteConnectionService($model, 'dbMaster');
         }
 
