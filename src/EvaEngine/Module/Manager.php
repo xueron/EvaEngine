@@ -274,6 +274,7 @@ class Manager implements EventsAwareInterface
             'relations' => $moduleClass::registerGlobalRelations(), //entity relations for injection
             'listeners' => $moduleClass::registerGlobalEventListeners(), //module listeners list array
             'viewHelpers' => $moduleClass::registerGlobalViewHelpers(), //module view helpers
+            'services' => $moduleClass::registerGlobalServices(), // module services
             //'translatePath' => false,
         ), $module);
 
@@ -380,9 +381,9 @@ class Manager implements EventsAwareInterface
     /**
      * @return array
      */
-    public function getMergedAdminMenu()
+    public function getMergedServices()
     {
-        return $this->getMergedArray('adminMenu');
+        return $this->getMergedArray('services');
     }
 
     /**
@@ -566,6 +567,19 @@ class Manager implements EventsAwareInterface
         $modules = $this->getModules();
         if (!empty($modules[$moduleName]['viewHelpers'])) {
             return $modules[$moduleName]['viewHelpers'];
+        }
+        return array();
+    }
+
+    /**
+     * @param $moduleName
+     * @return array
+     */
+    public function getModuleServices($moduleName)
+    {
+        $modules = $this->getModules();
+        if (!empty($modules[$moduleName]['services'])) {
+            return $modules[$moduleName]['services'];
         }
         return array();
     }

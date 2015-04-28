@@ -34,4 +34,9 @@ interface StandardInterface
      * @return void
      */
     public static function registerGlobalRelations();
+
+    /**
+     * @return void
+     */
+    public static function registerGlobalServices();
 }

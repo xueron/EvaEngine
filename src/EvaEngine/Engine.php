@@ -379,7 +379,56 @@ class Engine
         if (!$di->getConfig()->debug && false === $cacheLoaded && $listeners) {
             $this->writeCache($cacheFile, $listeners);
         }
+        return $this;
+    }
 
+    /**
+     * @return $this
+     */
+    public function registerModuleServices()
+    {
+        $di = $this->getDI();
+        $cachePrefix = $this->getAppName();
+        $cacheFile = $this->getConfigPath() . "/_cache.$cachePrefix.services.php";
+        $services = $this->readCache($cacheFile);
+        $cacheLoaded = false;
+        if (!$services) {
+            $moduleManager = $di->getModuleManager();
+            $modules = $moduleManager->getModules();
+            $services = array();
+            foreach ($modules as $moduleName => $module) {
+                $moduleServices = $moduleManager->getModuleServices($moduleName);
+                if ($moduleServices) {
+                    $services[$moduleName] = $moduleServices;
+                }
+            }
+        } else {
+            $cacheLoaded = true;
+        }
+        if (!is_array($services)) {
+            return $this;
+        }
+        foreach ($services as $moduleName => $moduleServices) {
+            if (!$moduleServices) {
+                continue;
+            }
+            foreach ($moduleServices as $serviceName => $serviceInfo) {
+                if (!is_array($serviceInfo) || count($serviceInfo) < 1) {
+                    continue;
+                }
+                if (count($serviceInfo) < 2) {
+                    $serviceInfo[1] = true;
+                }
+                $di->set($serviceName, $serviceInfo[0], $serviceInfo[1]);
+            }
+        }
+        if ($di->getConfig()->debug) {
+            $debugger = $this->getDebugger();
+            $debugger->debugVar($services, 'services');
+        }
+        if (!$di->getConfig()->debug && false === $cacheLoaded && $services) {
+            $this->writeCache($cacheFile, $services);
+        }
         return $this;
     }
 
@@ -1345,6 +1394,7 @@ class Engine
             ->setDI($this->getDI());
         $this->getApplication()
             ->setEventsManager($this->getDI()->getEventsManager());
+        $this->registerModuleServices();
         $this->attachModuleEvents();
         //Error Handler must run before router start
         if ($this->appMode == 'cli') {
