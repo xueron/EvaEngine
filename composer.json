@@ -26,6 +26,6 @@
     },
     "autoload": {
         "psr-4": {"Eva\\EvaEngine\\": "src/EvaEngine"}
+        "files": ["src/EvaEngine/helpers.php"]
     }
-    "files": ["src/EvaEngine/helpers.php"]
 }
