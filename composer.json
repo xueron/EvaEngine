@@ -25,7 +25,7 @@
         "ext-gearman": "*"
     },
     "autoload": {
-        "psr-4": {"Eva\\EvaEngine\\": "src/EvaEngine"}
+        "psr-4": {"Eva\\EvaEngine\\": "src/EvaEngine"},
         "files": ["src/EvaEngine/helpers.php"]
     }
 }
