@@ -4,10 +4,10 @@
     "license": "BSD-3-Clause",
     "authors": [
         {
-        "name": "AlloVince",
-        "email": "allo.vince@gmail.com",
-        "homepage": "http://avnpc.com"
-    }
+            "name": "AlloVince",
+            "email": "allo.vince@gmail.com",
+            "homepage": "http://avnpc.com"
+        }
     ],
     "require": {
         "php": ">=5.4",
@@ -27,4 +27,5 @@
     "autoload": {
         "psr-4": {"Eva\\EvaEngine\\": "src/EvaEngine"}
     }
+    "files": ["src/EvaEngine/helpers.php"]
 }

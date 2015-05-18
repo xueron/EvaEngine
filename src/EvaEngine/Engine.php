@@ -51,6 +51,7 @@ use Eva\EvaSms\Sender;
  * </code>
  *
  * Class Engine
+ *
  * @package Eva\EvaEngine
  */
 class Engine
@@ -218,12 +219,12 @@ class Engine
     /**
      *
      * @param $cacheFile cache file path
-     * @param bool $serialize
+     * @param bool                      $serialize
      * @return mixed|null
      */
     public function readCache($cacheFile, $serialize = false)
     {
-        if (file_exists($cacheFile) && $cache = include($cacheFile)) {
+        if (file_exists($cacheFile) && $cache = include $cacheFile) {
             return true === $serialize ? unserialize($cache) : $cache;
         }
 
@@ -233,7 +234,7 @@ class Engine
     /**
      * @param $cacheFile
      * @param $content
-     * @param bool $serialize
+     * @param bool      $serialize
      * @return bool
      */
     public function writeCache($cacheFile, $content, $serialize = false)
@@ -300,7 +301,7 @@ class Engine
      * - module:beforeLoadModule
      * - module:afterLoadModule
      *
-     * @param array $moduleSettings
+     * @param  array $moduleSettings
      * @return $this
      */
     public function loadModules(array $moduleSettings)
@@ -1058,8 +1059,11 @@ class Engine
             throw new Exception\RuntimeException(sprintf('No DB Master options found'));
         }
 
-        return $this->diDbAdapter($config->dbAdapter->master->adapter, $config->dbAdapter->master->toArray(),
-            $this->getDI());
+        return $this->diDbAdapter(
+            $config->dbAdapter->master->adapter,
+            $config->dbAdapter->master->toArray(),
+            $this->getDI()
+        );
     }
 
     public function diDbSlave()
@@ -1183,9 +1187,14 @@ class Engine
         );
 
         $frontCacheClassName = $config->cache->$configKey->frontend->adapter;
-        $frontCacheClassName = false === strpos($frontCacheClassName,
-            '\\') ? strtolower($frontCacheClassName) : $frontCacheClassName;
-        $frontCacheClass = empty($adapterMapping[$frontCacheClassName]) ? $frontCacheClassName : $adapterMapping[$frontCacheClassName];
+        $frontCacheClassName = false === strpos(
+            $frontCacheClassName,
+            '\\'
+        ) ? strtolower($frontCacheClassName) : $frontCacheClassName;
+        $frontCacheClass =
+            empty($adapterMapping[$frontCacheClassName])
+                ? $frontCacheClassName
+                : $adapterMapping[$frontCacheClassName];
         if (false === class_exists($frontCacheClass)) {
             throw new Exception\RuntimeException(sprintf('No cache adapter found by %s', $frontCacheClass));
         }
@@ -1197,8 +1206,10 @@ class Engine
             $cache = new \Eva\EvaEngine\Cache\Backend\Disable($frontCache);
         } else {
             $backendCacheClassName = $config->cache->$configKey->backend->adapter;
-            $backendCacheClassName = false === strpos($backendCacheClassName,
-                '\\') ? strtolower($backendCacheClassName) : $backendCacheClassName;
+            $backendCacheClassName = false === strpos(
+                $backendCacheClassName,
+                '\\'
+            ) ? strtolower($backendCacheClassName) : $backendCacheClassName;
             $backendCacheClass =
                 !empty($adapterMapping[$backendCacheClassName])
                     ? $adapterMapping[$backendCacheClassName]
@@ -1290,11 +1301,11 @@ class Engine
         if (!empty($config->session->cookie_params)) {
             $cookie_params = $config->session->cookie_params;
             session_set_cookie_params(
-                $cookie_params->lifetime,
-                $cookie_params->path,
-                $cookie_params->domain,
-                $cookie_params->secure,
-                $cookie_params->httponly
+                @$cookie_params->lifetime,
+                @$cookie_params->path,
+                @$cookie_params->domain,
+                @$cookie_params->secure,
+                @$cookie_params->httponly
             );
         }
         $session = new $sessionClass(array_merge(
@@ -1315,12 +1326,14 @@ class Engine
     {
         $config = $this->getDI()->getConfig();
 
-        return new TokenStorage(array_merge(
-            array(
+        return new TokenStorage(
+            array_merge(
+                array(
                 'uniqueId' => $this->getAppName(),
-            ),
-            $config->tokenStorage->toArray()
-        ));
+                ),
+                $config->tokenStorage->toArray()
+            )
+        );
     }
 
     public function diTranslate()
@@ -1329,16 +1342,19 @@ class Engine
         $file = $config->translate->path . $config->translate->forceLang . '.csv';
         if (false === file_exists($file)) {
             //empty translator
-            return new \Phalcon\Translate\Adapter\NativeArray(array(
+            return new \Phalcon\Translate\Adapter\NativeArray(
+                array(
                 'content' => array()
-            ));
+                )
+            );
         }
 
         //Fixed: 2.0.0 use 'content' as file key
         $translate = new \Phalcon\Translate\Adapter\Csv(array(
             'content' => $file,
             'delimiter' => ',',
-        ));
+            )
+        );
 
         return $translate;
     }
