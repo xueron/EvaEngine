@@ -805,7 +805,9 @@ class Engine
                 $crypt = new Crypt();
 
                 //设置全局加密密钥
-                $crypt->setKey($config->crypt_key);
+                $crypt->setKey($config->core->cryptKey);
+                $crypt->setCipher('rijndael-128');
+                $crypt->setMode('ofb');
                 return $crypt;
             },
             true
