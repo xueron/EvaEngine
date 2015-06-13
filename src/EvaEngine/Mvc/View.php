@@ -94,7 +94,7 @@ class View extends PhalconView
         $this->moduleLayout = realpath(dirname($moduleLayout));
         $this->moduleLayoutName = basename($moduleLayout);
         if ($this->moduleViewsDir) {
-            $this->caculateLayoutRelatedPath();
+            $this->calculateLayoutRelatedPath();
         }
 
         return $this;
@@ -124,10 +124,10 @@ class View extends PhalconView
         $this->moduleViewsDir = $moduleViewsDir = realpath($modulePath . $viewsDir);
         $this->setViewsDir($moduleViewsDir);
         if ($this->moduleLayout) {
-            $this->caculateLayoutRelatedPath();
+            $this->calculateLayoutRelatedPath();
         }
         if ($this->modulePartialsDir) {
-            $this->caculatePartialsRelatedPath();
+            $this->calculatePartialsRelatedPath();
         }
 
         return $this;
@@ -148,7 +148,7 @@ class View extends PhalconView
         $modulePath = $moduleManager->getModulePath($moduleName);
         $this->modulePartialsDir = $modulePartialsDir = realpath($modulePath . $partialsDir);
         if ($this->moduleViewsDir) {
-            $this->caculatePartialsRelatedPath();
+            $this->calculatePartialsRelatedPath();
         }
 
         return $this;
@@ -188,7 +188,7 @@ class View extends PhalconView
     /**
      * @return $this
      */
-    protected function caculatePartialsRelatedPath()
+    protected function calculatePartialsRelatedPath()
     {
         $moduleViewsDir = $this->moduleViewsDir;
         $partialsDir = $this->modulePartialsDir;
@@ -201,7 +201,7 @@ class View extends PhalconView
     /**
      * @return $this
      */
-    protected function caculateLayoutRelatedPath()
+    protected function calculateLayoutRelatedPath()
     {
         $moduleViewsDir = $this->moduleViewsDir;
         $moduleLayout = $this->moduleLayout;

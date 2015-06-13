@@ -51,6 +51,14 @@ abstract class AbstractModule implements StandardInterface, ModuleDefinitionInte
     }
 
     /**
+     * @return array|void
+     */
+    public static function registerGlobalServices()
+    {
+        return array();
+    }
+
+    /**
      * Registers the module auto-loader
      * @param DiInterface $diInterface
      * @internal param $

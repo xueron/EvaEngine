@@ -8,8 +8,8 @@
  */
 namespace Eva\EvaEngine\Mvc\Controller;
 
-use Phalcon\Mvc\Controller;
 use Eva\EvaEngine\Exception;
+use Phalcon\Mvc\Controller;
 use Phalcon\Forms\Form;
 use Phalcon\Mvc\Model;
 
@@ -376,7 +376,8 @@ class ControllerBase extends Controller
         $allowCredentials = 'true',
         $allowMethods = '*',
         $allowHeaders = null
-    ) {
+    )
+    {
         if (empty($_SERVER['HTTP_ORIGIN'])) {
             return;
         }

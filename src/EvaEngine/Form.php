@@ -380,7 +380,7 @@ class Form extends \Phalcon\Forms\Form
         }
         $attributes = array_merge(
             array(
-            'name' => $this->prefix . '[' . $this->get($name)->getName() . ']'
+                'name' => $this->prefix . '[' . $this->get($name)->getName() . ']'
             ),
             (array)$attributes
         );
@@ -419,14 +419,14 @@ class Form extends \Phalcon\Forms\Form
         $relationKey =
             is_array($formOptions)
             && isset($formOptions['relationKey'])
-            ? $formOptions['relationKey']
-            : $prefix;
+                ? $formOptions['relationKey']
+                : $prefix;
         $formClass->setRelationKey($relationKey);
         $relationModel =
             is_array($formOptions)
             && isset($formOptions['relationModel'])
-            ? $formOptions['relationModel']
-            : null;
+                ? $formOptions['relationModel']
+                : null;
         if ($relationModel) {
             $formClass->setDefaultModelClass($relationModel);
         }

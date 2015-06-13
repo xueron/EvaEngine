@@ -9,7 +9,6 @@
 
 namespace Eva\EvaEngine;
 
-use Phalcon\Crypt;
 use Phalcon\Debug;
 use Phalcon\Config;
 use Phalcon\Loader;
@@ -23,19 +22,21 @@ use Phalcon\Mvc\Router;
 use Phalcon\Mvc\Dispatcher;
 use Phalcon\Mvc\Application;
 use Phalcon\Mvc\View\Engine\Volt;
-use Phalcon\Mvc\View\Engine\Php;
+use Phalcon\Mvc\Model\MetaData\Memory;
+use Phalcon\Mvc\Model\Transaction\Manager as TransactionManager;
 use Phalcon\Events\Manager as EventsManager;
 use Phalcon\Logger\Adapter\File as FileLogger;
 use Phalcon\Queue\Beanstalk;
+use Phalcon\Http\Response\Cookies;
 use Eva\EvaEngine\Module\Manager as ModuleManager;
 use Eva\EvaEngine\CLI\Output\ConsoleOutput;
-//use Eva\EvaEngine\Events\DispatchCacheListener;
 use Eva\EvaEngine\Interceptor\Dispatch as DispatchInterceptor;
 use Eva\EvaEngine\SDK\SendCloudMailer;
 use Eva\EvaEngine\Mvc\Url as UrlResolver;
 use Eva\EvaEngine\Mvc\View;
 use Eva\EvaEngine\Mvc\Model\Manager as ModelManager;
 use Eva\EvaEngine\Service\TokenStorage;
+use Eva\EvaEngine\Cache\Backend\Disable;
 use Eva\EvaEngine\Tag;
 use Eva\EvaSms\Sender;
 
@@ -219,7 +220,7 @@ class Engine
     /**
      *
      * @param $cacheFile cache file path
-     * @param bool                      $serialize
+     * @param bool $serialize
      * @return mixed|null
      */
     public function readCache($cacheFile, $serialize = false)
@@ -234,7 +235,7 @@ class Engine
     /**
      * @param $cacheFile
      * @param $content
-     * @param bool      $serialize
+     * @param bool $serialize
      * @return bool
      */
     public function writeCache($cacheFile, $content, $serialize = false)
@@ -264,7 +265,7 @@ class Engine
 
         $debugger = new Debug();
         $debugger->setShowFileFragment(true);
-        $debugger->listen(true, false); // onUncaughtLowSeverity not implemented
+        $debugger->listen(true, true);
 
         return $this->debugger = $debugger;
     }
@@ -409,24 +410,29 @@ class Engine
         if (!is_array($services)) {
             return $this;
         }
+
         foreach ($services as $moduleName => $moduleServices) {
             if (!$moduleServices) {
                 continue;
             }
+
             foreach ($moduleServices as $serviceName => $serviceInfo) {
                 if (!is_array($serviceInfo) || count($serviceInfo) < 1) {
-                    continue;
+                    $di->set($serviceName, $serviceInfo, true);
+                } else {
+                    if (count($serviceInfo) < 2) {
+                        $serviceInfo[1] = true;
+                    }
+                    $di->set($serviceName, $serviceInfo[0], $serviceInfo[1]);
                 }
-                if (count($serviceInfo) < 2) {
-                    $serviceInfo[1] = true;
-                }
-                $di->set($serviceName, $serviceInfo[0], $serviceInfo[1]);
             }
         }
+
         if ($di->getConfig()->debug) {
             $debugger = $this->getDebugger();
             $debugger->debugVar($services, 'services');
         }
+
         if (!$di->getConfig()->debug && false === $cacheLoaded && $services) {
             $this->writeCache($cacheFile, $services);
         }
@@ -495,14 +501,8 @@ class Engine
             $di = new FactoryDefault();
         }
 
-        // Fix 2.0.0, getEventsManager no longer a magic method
-        $di->setEventsManager($di->get('eventsManager'));
-        $di->getEventsManager()->enablePriorities(true);
-        $di->getEventsManager()->attach(
-            "dispatch",
-            new DispatchInterceptor(),
-            -1
-        );
+        // Fix 2.0.x
+        $di->setInternalEventsManager($di->getEventsManager());
 
         //PHP5.3 not support $this in closure
         $self = $this;
@@ -647,9 +647,8 @@ class Engine
         $di->set(
             'transactions',
             function () use ($di) {
-                $transactions = new \Phalcon\Mvc\Model\Transaction\Manager();
+                $transactions = new TransactionManager();
                 $transactions->setDbService('dbMaster');
-
                 return $transactions;
             },
             true
@@ -718,8 +717,11 @@ class Engine
             true
         );
 
+        /**
+         * set task server using gearmand
+         */
         $di->set(
-            'taskServer',
+            'taskClient',
             function () use ($di) {
                 $config = $di->getConfig();
                 $client = new \GearmanClient();
@@ -734,7 +736,7 @@ class Engine
         );
 
         $di->set(
-            'worker',
+            'taskWorker',
             function () use ($di) {
                 $config = $di->getConfig();
                 $worker = new \GearmanWorker();
@@ -749,7 +751,7 @@ class Engine
 
 
         /**********************************
-         * DI initialize for email
+         * DI initialize for email and Sms
          ***********************************/
         $di->set(
             'mailer',
@@ -797,28 +799,12 @@ class Engine
 
         $di->set('placeholder', 'Eva\EvaEngine\View\Helper\Placeholder');
 
-        // 覆盖默认的crypt服务，增加设置全局加密密钥
-        $di->set(
-            'crypt',
-            function () use ($di) {
-                $config = $di->getConfig();
-                $crypt = new Crypt();
-
-                //设置全局加密密钥
-                $crypt->setKey($config->core->cryptKey);
-                $crypt->setCipher('rijndael-128');
-                $crypt->setMode('ofb');
-                return $crypt;
-            },
-            true
-        );
-
+        // 覆盖默认的cookies，关闭Encryption
         $di->set(
             'cookies',
             function () {
-                $cookies = new \Phalcon\Http\Response\Cookies();
+                $cookies = new Cookies();
                 $cookies->useEncryption(false);
-
                 return $cookies;
             }
         );
@@ -849,7 +835,6 @@ class Engine
             'logException',
             function () use ($di) {
                 $config = $di->getConfig();
-
                 return new FileLogger($config->logger->path . 'error.log');
             }
         );
@@ -961,10 +946,9 @@ class Engine
         $config->merge(new Config(include $this->getConfigPath() . "/config.default.php"));
 
         //merge config local
-        if (false === file_exists($this->getConfigPath() . "/config.local.php")) {
-            return $config;
+        if (false !== file_exists($this->getConfigPath() . "/config.local.php")) {
+            $config->merge(new Config(include $this->getConfigPath() . "/config.local.php"));
         }
-        $config->merge(new Config(include $this->getConfigPath() . "/config.local.php"));
 
         if (!$config->debug) {
             $this->writeCache($cacheFile, $config->toArray());
@@ -1040,7 +1024,7 @@ class Engine
 
         $config = $this->getDI()->getConfig();
         if (!$config->modelsMetadata->enable) {
-            return new \Phalcon\Mvc\Model\MetaData\Memory();
+            return new Memory();
         }
 
         $adapterKey = $config->modelsMetadata->adapter;
@@ -1099,11 +1083,12 @@ class Engine
 
         $options['charset'] = isset($options['charset']) && $options['charset'] ? $options['charset'] : 'utf8';
         $dbAdapter = new $adapterClass($options);
-
+        $dbAdapter->setEventsManager($di->getEventsManager());
 
         $config = $di->getConfig();
 
         if ($config->debug) {
+            /* @var $eventsManager EventsManager */
             $eventsManager = $di->getEventsManager();
             $logger = new FileLogger($config->logger->path . 'db_query.log');
 
@@ -1124,7 +1109,6 @@ class Engine
                     }
                 }
             );
-            $dbAdapter->setEventsManager($eventsManager);
         }
 
         return $dbAdapter;
@@ -1205,7 +1189,7 @@ class Engine
         );
 
         if (!$config->cache->enable || !$config->cache->$configKey->enable) {
-            $cache = new \Eva\EvaEngine\Cache\Backend\Disable($frontCache);
+            $cache = new Disable($frontCache);
         } else {
             $backendCacheClassName = $config->cache->$configKey->backend->adapter;
             $backendCacheClassName = false === strpos(
@@ -1236,6 +1220,8 @@ class Engine
         $config = $this->getDI()->getConfig();
         $adapterMapping = array(
             'submail' => 'Eva\EvaSms\Providers\Submail',
+            'zucp' => 'Ryd\RydCore\Sms\Providers\Zucp',
+            'js139' => 'Ryd\RydCore\Sms\Providers\Js139'
         );
         $adapterKey = $config->smsSender->provider;
         $adapterKey = false === strpos($adapterKey, '\\') ? strtolower($adapterKey) : $adapterKey;
@@ -1310,6 +1296,7 @@ class Engine
                 @$cookie_params->httponly
             );
         }
+        /* @var $session \Phalcon\Session\AdapterInterface */
         $session = new $sessionClass(array_merge(
             array(
                 'uniqueId' => $this->getAppName(),
@@ -1331,7 +1318,7 @@ class Engine
         return new TokenStorage(
             array_merge(
                 array(
-                'uniqueId' => $this->getAppName(),
+                    'uniqueId' => $this->getAppName(),
                 ),
                 $config->tokenStorage->toArray()
             )
@@ -1346,15 +1333,15 @@ class Engine
             //empty translator
             return new \Phalcon\Translate\Adapter\NativeArray(
                 array(
-                'content' => array()
+                    'content' => array()
                 )
             );
         }
 
         //Fixed: 2.0.0 use 'content' as file key
         $translate = new \Phalcon\Translate\Adapter\Csv(array(
-            'content' => $file,
-            'delimiter' => ',',
+                'content' => $file,
+                'delimiter' => ',',
             )
         );
 
@@ -1377,6 +1364,7 @@ class Engine
         $di = $this->getDI();
         $config = $di->getConfig();
         $volt = new Volt($di->getView(), $di);
+        $volt->setEventsManager($di->getEventsManager());
         $volt->setOptions(
             array(
                 "compiledPath" => $config->templateEngine->volt->compiledPath,
@@ -1408,12 +1396,13 @@ class Engine
             $debugger = $this->getDebugger();
             $debugger->debugVar($this->getDI()->getModuleManager()->getModules(), 'modules');
         }
-        $this->getApplication()
-            ->setDI($this->getDI());
-        $this->getApplication()
-            ->setEventsManager($this->getDI()->getEventsManager());
+
+        // INIT Application
+        $this->getApplication()->setDI($this->getDI());
+        $this->getApplication()->setEventsManager($this->getDI()->getEventsManager());
         $this->registerModuleServices();
         $this->attachModuleEvents();
+
         //Error Handler must run before router start
         if ($this->appMode == 'cli') {
             $this->initErrorHandler(new Error\CLIErrorHandler());
@@ -1479,28 +1468,31 @@ class Engine
         }
         */
 
-        //Roter
-        $router = $di['router'];
+        /* @var $router Router */
+        $router = $di->getRouter();
         $router->handle();
 
         //Module handle
         $modules = $this->getApplication()->getModules();
         $routeModule = $router->getModuleName();
         if (isset($modules[$routeModule])) {
+            /* @var $moduleClass \Phalcon\Mvc\ModuleDefinitionInterface */
             $moduleClass = new $modules[$routeModule]['className']();
-            $moduleClass->registerAutoloaders();
+            $moduleClass->registerAutoloaders($di);
             $moduleClass->registerServices($di);
         }
 
         //dispatch
-        $dispatcher = $di['dispatcher'];
+        /* @var $dispatcher \Phalcon\Mvc\Dispatcher */
+        $dispatcher = $di->getDispatcher();
         $dispatcher->setModuleName($router->getModuleName());
         $dispatcher->setControllerName($router->getControllerName());
         $dispatcher->setActionName($router->getActionName());
         $dispatcher->setParams($router->getParams());
 
         //view
-        $view = $di['view'];
+        /* @var $view \Phalcon\Mvc\View */
+        $view = $di->getView();
         $view->start();
         $dispatcher->dispatch();
         //Not able to call render in controller or else will repeat output
@@ -1512,7 +1504,8 @@ class Engine
         $view->finish();
 
         //NOTICE: not able to output flash session content
-        $response = $di['response'];
+        /* @var $response \Phalcon\Http\ResponseInterface */
+        $response = $di->getResponse();
         $response->setContent($view->getContent());
         $response->sendHeaders();
         echo $response->getContent();

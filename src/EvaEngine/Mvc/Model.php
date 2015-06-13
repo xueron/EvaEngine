@@ -9,8 +9,8 @@
 namespace Eva\EvaEngine\Mvc;
 
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultSet;
-use Eva\EvaEngine\Mvc\Model\Manager as ModelManager;
 use Phalcon\Mvc\Model as PhalconModel;
+use Eva\EvaEngine\Mvc\Model\Manager as ModelManager;
 use Eva\EvaEngine\Form;
 
 /**

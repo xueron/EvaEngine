@@ -40,8 +40,8 @@ class Uniqueness extends PhalconUniqueness implements ValidatorInterface
         $bindArray += $bind;
         $item = $model->findFirst(
             array(
-            'conditions' => $conditionString,
-            'bind' => $bindArray
+                'conditions' => $conditionString,
+                'bind' => $bindArray
             )
         );
 
