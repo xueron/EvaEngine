@@ -265,7 +265,7 @@ class Engine
 
         $debugger = new Debug();
         $debugger->setShowFileFragment(true);
-        $debugger->listen(true, true);
+        $debugger->listen(true, false);
 
         return $this->debugger = $debugger;
     }
