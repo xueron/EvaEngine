@@ -13,11 +13,12 @@ use Phalcon\Debug;
 use Phalcon\Config;
 use Phalcon\Loader;
 use Phalcon\DiInterface;
-use Phalcon\CLI\Console;
-use Phalcon\CLI\Router as CLIRouter;
-use Phalcon\CLI\Dispatcher as CLIDispatcher;
-use Phalcon\DI\FactoryDefault;
-use Phalcon\DI\FactoryDefault\CLI;
+use Phalcon\Cli\Console;
+use Phalcon\Cli\Router as CliRouter;
+use Phalcon\Cli\Dispatcher as CliDispatcher;
+use Phalcon\Di;
+use Phalcon\Di\FactoryDefault;
+use Phalcon\Di\FactoryDefault\Cli;
 use Phalcon\Mvc\Router;
 use Phalcon\Mvc\Dispatcher;
 use Phalcon\Mvc\Application;
@@ -25,6 +26,7 @@ use Phalcon\Mvc\View\Engine\Volt;
 use Phalcon\Mvc\Model\MetaData\Memory;
 use Phalcon\Mvc\Model\Transaction\Manager as TransactionManager;
 use Phalcon\Events\Manager as EventsManager;
+use Phalcon\Events\ManagerInterface as EventsManagerInterface;
 use Phalcon\Logger\Adapter\File as FileLogger;
 use Phalcon\Queue\Beanstalk;
 use Phalcon\Http\Response\Cookies;
@@ -307,6 +309,8 @@ class Engine
      */
     public function loadModules(array $moduleSettings)
     {
+        $di = $this->getDI();
+        /* @var $moduleManager ModuleManager */
         $moduleManager = $this->getDI()->getModuleManager();
 
         if ($this->getEnvironment() == 'production') {
@@ -320,7 +324,7 @@ class Engine
             ->setDefaultPath($this->getModulesPath())
             ->loadModules($moduleSettings, $this->getAppName());
 
-        if ($this->getDI()->getConfig()->debug) {
+        if ($di->getConfig()->debug) {
             $cachePrefix = $this->getAppName();
             $this->writeCache(
                 $this->getConfigPath() . "/_debug.$cachePrefix.modules.php",
@@ -329,8 +333,9 @@ class Engine
         }
 
         $this->getApplication()->registerModules($moduleManager->getModules());
-        //Overwirte default modulemanager
-        $this->getDI()->set('moduleManager', $moduleManager, true);
+
+        //moduleManager settings changed, overwrite default
+        $di->set('moduleManager', $moduleManager, true);
         return $this;
     }
 
@@ -346,6 +351,7 @@ class Engine
         $cacheLoaded = false;
 
         if (!$listeners) {
+            /* @var $moduleManager ModuleManager */
             $moduleManager = $di->getModuleManager();
             $modules = $moduleManager->getModules();
             $listeners = array();
@@ -363,6 +369,7 @@ class Engine
             return $this;
         }
 
+        /* @var $eventsManager EventsManagerInterface */
         $eventsManager = $di->getEventsManager();
         foreach ($listeners as $moduleName => $moduleListeners) {
             if (!$moduleListeners) {
@@ -395,6 +402,7 @@ class Engine
         $services = $this->readCache($cacheFile);
         $cacheLoaded = false;
         if (!$services) {
+            /* @var $moduleManager ModuleManager */
             $moduleManager = $di->getModuleManager();
             $modules = $moduleManager->getModules();
             $services = array();
@@ -456,6 +464,7 @@ class Engine
         }
 
         $helpers = array();
+        /* @var $moduleManager ModuleManager */
         $moduleManager = $di->getModuleManager();
         $modules = $moduleManager->getModules();
         foreach ($modules as $moduleName => $module) {
@@ -496,7 +505,7 @@ class Engine
             return $this->di;
         }
         if ($this->appMode == 'cli') {
-            $di = new FactoryDefault\CLI();
+            $di = new FactoryDefault\Cli();
         } else {
             $di = new FactoryDefault();
         }
@@ -530,6 +539,7 @@ class Engine
             function () use ($di) {
                 $eventsManager = new EventsManager();
                 $eventsManager->enablePriorities(true);
+
                 // dispatch caching event handler
                 $eventsManager->attach(
                     "dispatch",
@@ -644,6 +654,7 @@ class Engine
             true
         );
 
+        // override default transactions service, to enable master/slave support.
         $di->set(
             'transactions',
             function () use ($di) {
@@ -844,6 +855,7 @@ class Engine
             $this->cliDI($di);
         }
 
+        // Ioc Helper
         IoC::setDI($di);
 
         return $this->di = $di;
@@ -854,7 +866,7 @@ class Engine
      *
      * @param CLI $di
      */
-    protected function cliDI(CLI $di)
+    protected function cliDI(Cli $di)
     {
         global $argv;
 
@@ -1219,9 +1231,7 @@ class Engine
     {
         $config = $this->getDI()->getConfig();
         $adapterMapping = array(
-            'submail' => 'Eva\EvaSms\Providers\Submail',
-            'zucp' => 'Ryd\RydCore\Sms\Providers\Zucp',
-            'js139' => 'Ryd\RydCore\Sms\Providers\Js139'
+            'submail' => 'Eva\EvaSms\Providers\Submail'
         );
         $adapterKey = $config->smsSender->provider;
         $adapterKey = false === strpos($adapterKey, '\\') ? strtolower($adapterKey) : $adapterKey;
@@ -1429,7 +1439,8 @@ class Engine
      */
     public function initErrorHandler(Error\ErrorHandlerInterface $errorHandler)
     {
-        $this->getDI()->getEventsManager()->attach(
+        $di = $this->getDI();
+        $di->getEventsManager()->attach(
             'dispatch:beforeException',
             function ($event, $dispatcher, $exception) {
                 //For fixing phalcon weird behavior https://github.com/phalcon/cphalcon/issues/2558
@@ -1437,7 +1448,7 @@ class Engine
             }
         );
 
-        if ($this->getDI()->getConfig()->debug && $this->appMode != 'cli') {
+        if ($di->getConfig()->debug && $this->appMode != 'cli') {
             return $this;
         }
 

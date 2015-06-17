@@ -151,7 +151,7 @@ class Manager implements EventsAwareInterface
 
     /**
      * @param $cacheFile
-     * @param array     $content
+     * @param array $content
      * @return bool
      */
     public function writeCache($cacheFile, array $content)
@@ -243,8 +243,8 @@ class Manager implements EventsAwareInterface
         } elseif (true === is_array($moduleSetting)) {
             $module = array_merge(
                 array(
-                'className' => '',
-                'path' => '',
+                    'className' => '',
+                    'path' => '',
                 ),
                 $moduleSetting
             );
@@ -255,12 +255,12 @@ class Manager implements EventsAwareInterface
         }
 
         /**
- * @var StandardInterface $moduleClass
-*/
+         * @var StandardInterface $moduleClass
+         */
         $moduleClass = $module['className'];
         $this->getLoader()->registerClasses(
             array(
-            $moduleClass => $module['path']
+                $moduleClass => $module['path']
             )
         )->register();
 
@@ -269,31 +269,32 @@ class Manager implements EventsAwareInterface
         }
 
         if (count(
-            array_intersect(
-                array(
-                'Phalcon\Mvc\ModuleDefinitionInterface',
-                'Eva\EvaEngine\Module\StandardInterface'
-                ),
-                class_implements($moduleClass)
-            )
-        ) !== 2) {
+                array_intersect(
+                    array(
+                        'Phalcon\Mvc\ModuleDefinitionInterface',
+                        'Eva\EvaEngine\Module\StandardInterface'
+                    ),
+                    class_implements($moduleClass)
+                )
+            ) !== 2
+        ) {
             throw new \Exception(sprintf('Module %s interfaces not correct', $moduleClass));
         }
 
         $module['dir'] = $moduleDir = dirname($module['path']);
         $module = array_merge(
             array(
-            'moduleConfig' => "$moduleDir{$ds}config{$ds}config.php", //module config file path
-            'routesFrontend' => "$moduleDir{$ds}config{$ds}routes.frontend.php", //module router frontend path
-            'routesBackend' => "$moduleDir{$ds}config{$ds}routes.backend.php", //module router backend path
-            'routesCommand' => "$moduleDir{$ds}config{$ds}routes.command.php", // module router in CLI mode
-            'adminMenu' => "$moduleDir{$ds}config{$ds}admin.menu.php", //admin menu
-            'autoloaders' => $moduleClass::registerGlobalAutoloaders(), //autoloaders
-            'relations' => $moduleClass::registerGlobalRelations(), //entity relations for injection
-            'listeners' => $moduleClass::registerGlobalEventListeners(), //module listeners list array
-            'viewHelpers' => $moduleClass::registerGlobalViewHelpers(), //module view helpers
-            'services' => $moduleClass::registerGlobalServices(), // module services
-            //'translatePath' => false,
+                'moduleConfig' => "$moduleDir{$ds}config{$ds}config.php", //module config file path
+                'routesFrontend' => "$moduleDir{$ds}config{$ds}routes.frontend.php", //module router frontend path
+                'routesBackend' => "$moduleDir{$ds}config{$ds}routes.backend.php", //module router backend path
+                'routesCommand' => "$moduleDir{$ds}config{$ds}routes.command.php", // module router in CLI mode
+                'adminMenu' => "$moduleDir{$ds}config{$ds}admin.menu.php", //admin menu
+                'autoloaders' => $moduleClass::registerGlobalAutoloaders(), //autoloaders
+                'relations' => $moduleClass::registerGlobalRelations(), //entity relations for injection
+                'listeners' => $moduleClass::registerGlobalEventListeners(), //module listeners list array
+                'viewHelpers' => $moduleClass::registerGlobalViewHelpers(), //module view helpers
+                'services' => $moduleClass::registerGlobalServices(), // module services
+                //'translatePath' => false,
             ),
             $module
         );
@@ -347,9 +348,9 @@ class Manager implements EventsAwareInterface
             $this->writeCache(
                 $cacheFile,
                 array(
-                'classes' => $classes,
-                'namespaces' => $namespaces,
-                'modules' => $modules,
+                    'classes' => $classes,
+                    'namespaces' => $namespaces,
+                    'modules' => $modules,
                 )
             );
         }
@@ -477,7 +478,7 @@ class Manager implements EventsAwareInterface
                     $listenerClass = $listener;
                 } elseif (true === is_array($listener) && count($listener) > 1) {
                     $listenerClass = $listener[0];
-                    $priority = (int) $listener[1];
+                    $priority = (int)$listener[1];
                 } else {
                     throw new \Exception(sprintf("Module %s listener format not correct", $moduleName));
                 }

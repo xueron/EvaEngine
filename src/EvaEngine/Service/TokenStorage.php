@@ -12,7 +12,7 @@ namespace Eva\EvaEngine\Service;
 use Eva\EvaEngine\Exception;
 use Phalcon\DiInterface;
 use Phalcon\Session\AdapterInterface as SessionInterface;
-use Phalcon\DI\InjectionAwareInterface;
+use Phalcon\Di\InjectionAwareInterface;
 use Phalcon\Http\RequestInterface;
 use Phalcon\Text;
 

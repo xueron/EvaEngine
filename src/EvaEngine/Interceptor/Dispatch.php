@@ -240,7 +240,7 @@ class Dispatch
     public function injectInterceptor(DispatcherInterface $dispatcher)
     {
         /**
-         * @var \Phalcon\DI $di
+         * @var \Phalcon\Di $di
          */
         $di = $dispatcher->getDI();
         $config = $di->getConfig();

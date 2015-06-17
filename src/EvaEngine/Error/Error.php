@@ -9,9 +9,9 @@
 
 namespace Eva\EvaEngine\Error;
 
-use Eva\EvaEngine\Exception\ExceptionInterface;
 use Phalcon\Mvc\Dispatcher\Exception as DispatcherException;
 use Phalcon\Dispatcher;
+use Eva\EvaEngine\Exception\ExceptionInterface;
 use Eva\EvaEngine\Engine;
 
 /**

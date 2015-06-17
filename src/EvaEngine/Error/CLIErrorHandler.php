@@ -12,7 +12,7 @@ namespace Eva\EvaEngine\Error;
 use Eva\EvaEngine\CLI\Output\ConsoleOutput;
 use Eva\EvaEngine\CLI\Output\StreamOutput;
 use Eva\EvaEngine\CLI\Formatter\OutputFormatterInterface;
-use Phalcon\DI;
+use Phalcon\Di;
 use Phalcon\Logger\Adapter\File as FileLogger;
 use Phalcon\Logger\AdapterInterface as LoggerInterface;
 
@@ -74,7 +74,7 @@ class CLIErrorHandler implements ErrorHandlerInterface
             return static::$logger;
         }
 
-        $di = DI::getDefault();
+        $di = Di::getDefault();
         $config = $di->get('config');
 
         if (!isset($config->error->disableLog)

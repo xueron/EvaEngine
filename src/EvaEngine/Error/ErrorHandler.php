@@ -9,7 +9,7 @@
 
 namespace Eva\EvaEngine\Error;
 
-use Phalcon\DI;
+use Phalcon\Di;
 use Phalcon\Logger\Adapter\File as FileLogger;
 use Phalcon\Logger\AdapterInterface as LoggerInterface;
 use Phalcon\Events\Manager as EventsManager;
@@ -149,7 +149,7 @@ class ErrorHandler implements ErrorHandlerInterface
             return static::$logger;
         }
 
-        $di = DI::getDefault();
+        $di = Di::getDefault();
         $config = $di->getConfig();
 
         if (!isset($config->error->disableLog)
@@ -226,7 +226,7 @@ class ErrorHandler implements ErrorHandlerInterface
             return false;
         }
 
-        $di = DI::getDefault();
+        $di = Di::getDefault();
         /**
          * @var \Phalcon\Dispatcher $dispatcher
          */

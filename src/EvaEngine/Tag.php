@@ -100,6 +100,14 @@ class Tag extends \Phalcon\Tag
             return '';
         }
         $messages = $flash->getMessages();
+        if (!$messages) {
+            return '';
+        }
+        if (!is_array($messages)) {
+            $message = array('success' => $messages);
+            $messages = $message;
+        }
+
         $classMapping = array(
             'error' => 'alert alert-danger',
             'warning' => 'alert alert-warning',
