@@ -643,7 +643,7 @@ class Engine
             function () use ($self) {
                 return $self->diDbMaster();
             },
-            true
+            false
         );
 
         $di->set(
